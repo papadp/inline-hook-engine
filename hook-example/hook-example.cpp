@@ -5,6 +5,12 @@
 #include "Windows.h"
 #include "hook-example.h"
 
+//function typedefs
+typedef DWORD (*messageBoxA)(HWND hWnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType);
+
+//function pointer globals
+messageBoxA lpMessageBoxA;
+
 hookEngine::hookEngine()
 {
 	this->lpBuffer = VirtualAlloc(NULL, HOOKED_FUNC_AMOUNT * 12, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
@@ -13,17 +19,20 @@ hookEngine::hookEngine()
 LPVOID hookEngine::addDetour(LPVOID lpHookedFunction, DWORD dwPrologueSize, LPVOID lpHookFunc)
 {
 	LPVOID lpStartAddress = (LPVOID)((DWORD)this->lpBuffer + this->dwBufferUsed);
-	this->dwBufferUsed += this->installCall(lpStartAddress, lpHookFunc);
 	memcpy((LPVOID)((DWORD)this->lpBuffer + this->dwBufferUsed), lpHookedFunction, dwPrologueSize);
 	this->dwBufferUsed += dwPrologueSize;
+	
 	this->dwBufferUsed += this->installJmp((LPVOID)((DWORD)this->lpBuffer + this->dwBufferUsed), (LPVOID)((DWORD)lpHookedFunction + dwPrologueSize));
+	//memcpy((LPVOID)((DWORD)this->lpBuffer + this->dwBufferUsed), lpHookedFunction, dwPrologueSize);
+	//this->dwBufferUsed += dwPrologueSize;
+	//this->dwBufferUsed += this->installJmp((LPVOID)((DWORD)this->lpBuffer + this->dwBufferUsed), (LPVOID)((DWORD)lpHookedFunction + dwPrologueSize));
 	return lpStartAddress;
 }
 DWORD hookEngine::installCall(LPVOID lpStartAddress, LPVOID lpCallTarget)
 {
 	DWORD dwSizeOfGadget = 0;
-	*(LPBYTE)lpStartAddress = CALL_REL_OPCODE;
-	dwSizeOfGadget += sizeof(CALL_REL_OPCODE);
+	*(LPBYTE)lpStartAddress = (BYTE)CALL_REL_OPCODE;
+	dwSizeOfGadget += sizeof((BYTE)CALL_REL_OPCODE);
 	*(LPDWORD)((DWORD)lpStartAddress + dwSizeOfGadget) = (DWORD)((DWORD)lpCallTarget - ((DWORD)lpStartAddress + dwSizeOfGadget + sizeof(DWORD)));
 	dwSizeOfGadget += sizeof(DWORD);
 	return dwSizeOfGadget;
@@ -31,13 +40,13 @@ DWORD hookEngine::installCall(LPVOID lpStartAddress, LPVOID lpCallTarget)
 DWORD hookEngine::installJmp(LPVOID lpStartAddress, LPVOID lpCallTarget)
 {
 	DWORD dwSizeOfGadget = 0;
-	*(LPBYTE)lpStartAddress = JMP_REL_OPCODE;
-	dwSizeOfGadget += sizeof(JMP_REL_OPCODE);
+	*(LPBYTE)lpStartAddress = (BYTE)JMP_REL_OPCODE;
+	dwSizeOfGadget += sizeof((BYTE)JMP_REL_OPCODE);
 	*(LPDWORD)((DWORD)lpStartAddress + dwSizeOfGadget) = (DWORD)((DWORD)lpCallTarget - ((DWORD)lpStartAddress + dwSizeOfGadget + sizeof(DWORD)));
 	dwSizeOfGadget += sizeof(DWORD);
 	return dwSizeOfGadget;
 }
-BOOL hookEngine::installHook(DWORD dwPrologueSize, LPVOID lpHookedFunction, LPVOID lpDetourFunction)
+BOOL hookEngine::installHook(DWORD dwPrologueSize, LPVOID lpHookedFunction, LPVOID lpDetourFunction, _Out_ LPVOID* lpRealFunction)
 {
 	DWORD dwOldProtect;
 	if (!VirtualProtect(lpHookedFunction, dwPrologueSize, PAGE_EXECUTE_READWRITE, &dwOldProtect))
@@ -48,45 +57,35 @@ BOOL hookEngine::installHook(DWORD dwPrologueSize, LPVOID lpHookedFunction, LPVO
 	{
 		return false;
 	}
-	LPVOID lpGeneratedFunc = this->addDetour(lpHookedFunction, dwPrologueSize, lpDetourFunction);
-	DWORD dwGadgetSize = installJmp(lpHookedFunction, lpGeneratedFunc);
+	*lpRealFunction = (LPVOID)this->addDetour(lpHookedFunction, dwPrologueSize, lpDetourFunction);
+	DWORD dwGadgetSize = installJmp(lpHookedFunction, lpDetourFunction);
 	DWORD dwNopFill = dwPrologueSize - dwGadgetSize;
+	//LPVOID lpJ
 	if (dwNopFill > 0)
 	{
 		memset((LPVOID)((DWORD)lpHookedFunction + dwGadgetSize), NOP_OPCODE, dwNopFill);
 	}
+	FlushInstructionCache((HANDLE)-1, lpHookedFunction, dwPrologueSize + dwNopFill);
 }
 
-__declspec(naked) void msgBoxHookA()
+int myMessageBoxA(HWND hWnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType)
 {
-	LPSTR lpText;
-	LPSTR lpCaption;
-	LPVOID lpStackPointer;
-	__asm
+	if (strcmp(lpText, "ok") == 0)
 	{
-		mov lpStackPointer, esp
+		lpText = "CHANGED INPUT";
 	}
-	lpText = (LPSTR)*(LPDWORD)((DWORD)lpStackPointer + 12);
-	lpCaption = (LPSTR)*(LPDWORD)((DWORD)lpStackPointer + 16);
-	printf("MsgBoxCalled with text: %s and caption: %s\n", lpText, lpCaption);
-	__asm
-	{
-		retn
-	}
+	DWORD dwReturnValue = lpMessageBoxA(hWnd, lpText, lpCaption, uType);
+
+	return dwReturnValue;
 }
-__declspec(naked) void virtualAllocHook()
-{
-	printf("VirtualAllocCalled\n");
-	__asm
-	{
-		retn
-	}
-}
+
+// change the hook installment to take an additional parameter which would specify what pointer to call from the detour function (_Out_)
+
 int _tmain(int argc, _TCHAR* argv[])
 {
 	hookEngine he = hookEngine();
-	he.installHook(7, &MessageBoxA, msgBoxHookA);
-	he.installHook(5, &VirtualAlloc, virtualAllocHook);
+	he.installHook(7, &MessageBoxA, myMessageBoxA, (LPVOID*)&lpMessageBoxA);
+	//he.installHook(5, &VirtualAlloc, virtualAllocHook);
 	MessageBoxA(NULL, "ok", "catch this", MB_OK);
 	LPVOID lpVirt = VirtualAlloc(NULL, 100, MEM_COMMIT, PAGE_READWRITE);
 	return 0;

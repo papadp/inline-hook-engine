@@ -1,0 +1,18 @@
+﻿Build started 1/4/2016 21:31:02.
+     1>Project "C:\Resources\gitted\hookEngine\hook-example\hook-example.vcxproj" on node 2 (Build target(s)).
+     1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V120\Microsoft.CppBuild.targets(388,5): warning MSB8028: The intermediate directory (Release\) contains files shared from another project (hook-example.vcxproj).  This can lead to incorrect clean and rebuild behavior.
+     1>ClCompile:
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /Zi /nologo /W3 /WX- /sdl /O2 /Oi /Oy- /GL /D WIN32 /D NDEBUG /D _CONSOLE /D _LIB /D _UNICODE /D UNICODE /Gm- /EHsc /MT /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Yu"stdafx.h" /Fp"Release\hookEngine.pch" /Fo"Release\\" /Fd"Release\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt "hook-example.cpp"
+         hook-example.cpp
+       Link:
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Resources\gitted\hookEngine\Release\hookEngine.exe" /INCREMENTAL:NO /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\Resources\gitted\hookEngine\Release\hookEngine.pdb" /SUBSYSTEM:CONSOLE /OPT:REF /OPT:ICF /LTCG /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Resources\gitted\hookEngine\Release\hookEngine.lib" /MACHINE:X86 /SAFESEH "Release\hook-example.obj"
+         Release\stdafx.obj
+         Generating code
+     1>c:\resources\gitted\hookengine\hook-example\hook-example.cpp(71): warning C4715: 'hookEngine::installHook' : not all control paths return a value
+         Finished generating code
+         hook-example.vcxproj -> C:\Resources\gitted\hookEngine\Release\hookEngine.exe
+     1>Done Building Project "C:\Resources\gitted\hookEngine\hook-example\hook-example.vcxproj" (Build target(s)).
+
+Build succeeded.
+
+Time Elapsed 00:00:00.52
